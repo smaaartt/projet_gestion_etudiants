@@ -117,7 +117,7 @@ def peupler_etudiants_et_inscriptions():
     cursor.execute("SELECT id FROM etudiants")
     etu_ids = [row[0] for row in cursor.fetchall()]
 
-    inscriptions = [(etu_id, filiere_id, niveau_id, '2023-2024', 'A', 'actif', '2023-09-01') for etu_id in etu_ids]
+    inscriptions = [(etu_id, filiere_id, niveau_id, '2023-2024', 'Cursus Initial', 'actif', '2023-09-01') for etu_id in etu_ids]
     cursor.executemany("""
         INSERT INTO inscriptions (etudiant_id, filiere_id, niveau_id, annee_academique, groupe, statut, date_inscription)
         VALUES (?, ?, ?, ?, ?, ?, ?)

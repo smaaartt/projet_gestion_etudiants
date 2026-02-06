@@ -4,27 +4,25 @@ from fpdf import FPDF
 
 DB = "gestion_etudiants.db"
 
-def calculer_classement(filiere=None, niveau=None, groupe=None):
-    """
-    Retourne le classement des étudiants filtré par filière, niveau et groupe.
-    Si un filtre est None ou 'Tous', il n'est pas appliqué.
-    """
+def calculer_classement(filiere=None, niveau=None, groupe=None, annee="2023-2024"):
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
 
     query = """
-        SELECT 
+        SELECT
             e.id,
             e.nom,
             e.prenom,
-            SUM(n.note * n.coefficient) / SUM(n.coefficient) AS moyenne,
-            i.groupe
-        FROM etudiants e
+            i.groupe,
+            SUM(n.note * n.coefficient) / SUM(n.coefficient) AS moyenne
+        FROM inscriptions i
+        JOIN etudiants e ON e.id = i.etudiant_id
         JOIN notes n ON n.etudiant_id = e.id
-        JOIN inscriptions i ON i.etudiant_id = e.id
-        WHERE 1=1
+        JOIN modules m ON m.id = n.module_id
+        WHERE i.annee_academique = ?
+          AND n.annee_academique = ?
     """
-    params = []
+    params = [annee, annee]
 
     if filiere and filiere != "Tous":
         query += " AND i.filiere_id = ?"
@@ -43,46 +41,61 @@ def calculer_classement(filiere=None, niveau=None, groupe=None):
         ORDER BY moyenne DESC
     """
 
-    cursor.execute(query, tuple(params))
+    cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
 
     classement = []
-    rang = 1
-    for r in rows:
+    rang_affiche = 0
+    dernier_moyenne = None
+
+    for index, (eid, nom, prenom, grp, moyenne) in enumerate(rows, start=1):
+        if moyenne != dernier_moyenne:
+            rang_affiche = index
+            dernier_moyenne = moyenne
+
         classement.append({
-            "rang": rang,
-            "nom": r[1],
-            "prenom": r[2],
-            "moyenne": round(r[3], 2),
-            "mention": calculer_mention(r[3]),
-            "groupe": r[4]
+            "rang": rang_affiche,
+            "nom": nom,
+            "prenom": prenom,
+            "moyenne": round(moyenne, 2),
+            "mention": calculer_mention(moyenne),
+            "groupe": grp
         })
-        rang += 1
 
     return classement
 
 
 def calculer_mention(moyenne):
     if moyenne >= 16:
-        return "Très Bien"
+        return "Excellent"
     elif moyenne >= 14:
-        return "Bien"
+        return "Très Bien"
     elif moyenne >= 12:
-        return "Assez Bien"
+        return "Bien"
     elif moyenne >= 10:
         return "Passable"
     return "Ajourné"
+
 
 def exporter_excel(classement, path):
     df = pd.DataFrame(classement)
     df.to_excel(path, index=False)
 
+
 def exporter_pdf(classement, path):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=10)
+
+    pdf.cell(0, 10, "CLASSEMENT DES ÉTUDIANTS", ln=True)
+    pdf.ln(5)
+
     for e in classement:
-        ligne = f"{e['rang']} - {e['nom']} {e['prenom']} ({e['groupe']}) : {e['moyenne']} ({e['mention']})"
-        pdf.cell(0, 10, ligne, ln=True)
+        ligne = (
+            f"Rang {e['rang']} - {e['nom']} {e['prenom']} "
+            f"({e['groupe']}) : {e['moyenne']} / 20 - {e['mention']}"
+        )
+        pdf.multi_cell(0, 8, ligne)
+
     pdf.output(path)

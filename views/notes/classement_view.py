@@ -1,14 +1,8 @@
 import tkinter as tk
-from tkinter import ttk
-from services.classement_service import calculer_classement
-from services.import_export_service import exporter_classement_excel, exporter_classement_pdf
-from tkinter import filedialog, messagebox
-import sqlite3
-import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import sqlite3
 from services.classement_service import calculer_classement
 from services.import_export_service import exporter_classement_excel, exporter_classement_pdf
+import sqlite3
 
 class ClassementView:
 

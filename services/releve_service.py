@@ -18,11 +18,11 @@ def generer_releve_pdf(etudiant_id, path):
             return False, "Étudiant introuvable"
         nom, prenom = etu
 
-        # Notes et matières
+        # Notes et modules
         cursor.execute("""
             SELECT m.nom, n.note, n.coefficient, m.credits
             FROM notes n
-            JOIN matieres m ON n.matiere_id = m.id
+            JOIN modules m ON n.module_id = m.id
             WHERE n.etudiant_id=?
         """, (etudiant_id,))
         notes = cursor.fetchall()
@@ -42,6 +42,7 @@ def generer_releve_pdf(etudiant_id, path):
 
         # ----- Infos étudiant -----
         pdf.set_font("Arial", "", 12)
+        pdf.ln(10)
         pdf.cell(0, 10, f"Nom : {nom}", ln=True)
         pdf.cell(0, 10, f"Prénom : {prenom}", ln=True)
         pdf.ln(5)
@@ -49,7 +50,7 @@ def generer_releve_pdf(etudiant_id, path):
         # ----- Tableau de notes -----
         pdf.set_font("Arial", "B", 12)
         pdf.set_fill_color(200, 200, 200)
-        pdf.cell(70, 10, "Matière", 1, 0, "C", 1)
+        pdf.cell(70, 10, "Module", 1, 0, "C", 1)
         pdf.cell(30, 10, "Note", 1, 0, "C", 1)
         pdf.cell(30, 10, "Coef", 1, 0, "C", 1)
         pdf.cell(30, 10, "Crédits", 1, 1, "C", 1)
@@ -57,8 +58,8 @@ def generer_releve_pdf(etudiant_id, path):
         pdf.set_font("Arial", "", 12)
         total_note = 0
         total_coef = 0
-        for mat, note, coef, credits in notes:
-            pdf.cell(70, 10, mat, 1)
+        for module, note, coef, credits in notes:
+            pdf.cell(70, 10, module, 1)
             pdf.cell(30, 10, str(note), 1, 0, "C")
             pdf.cell(30, 10, str(coef), 1, 0, "C")
             pdf.cell(30, 10, str(credits), 1, 1, "C")

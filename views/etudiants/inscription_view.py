@@ -137,21 +137,63 @@ class EtudiantModule:
             self.lbl_photo.config(image=self.photo_img, text="")
 
     def sauvegarder_etudiant(self):
-        if not self.ent_nom.get() or not self.combo_filiere.get():
-            messagebox.showerror("Erreur", "Veuillez remplir les champs obligatoires.")
+        if not self.ent_nom.get() or not self.combo_filiere.get() or not self.combo_niveau.get():
+            messagebox.showerror("Erreur", "Veuillez remplir tous les champs obligatoires.")
             return
 
         try:
             conn = sqlite3.connect('gestion_etudiants.db')
             cursor = conn.cursor()
+
             cursor.execute("""
                 INSERT INTO etudiants (matricule, nom, prenom, sexe, email, photo_path, date_inscription, statut)
                 VALUES (?, ?, ?, ?, ?, ?, ?, 'actif')
-            """, (self.matricule_auto, self.ent_nom.get().upper(), self.ent_prenom.get(), 
-                  self.combo_sexe.get(), self.ent_email.get(), self.photo_path, 
-                  datetime.now().strftime("%Y-%m-%d")))
+            """, (
+                self.matricule_auto,
+                self.ent_nom.get().upper(),
+                self.ent_prenom.get(),
+                self.combo_sexe.get(),
+                self.ent_email.get(),
+                self.photo_path,
+                datetime.now().strftime("%Y-%m-%d")
+            ))
+
+            etudiant_id = cursor.lastrowid
+
+            cursor.execute("SELECT id FROM filieres WHERE nom = ?", (self.combo_filiere.get(),))
+            filiere_id = cursor.fetchone()[0]
+
+            cursor.execute("SELECT id FROM niveaux WHERE nom = ?", (self.combo_niveau.get(),))
+            niveau_id = cursor.fetchone()[0]
+
+            cursor.execute("""
+                INSERT INTO inscriptions (
+                    etudiant_id, filiere_id, niveau_id,
+                    annee_academique, groupe, statut, date_inscription
+                )
+                VALUES (?, ?, ?, ?, ?, 'actif', ?)
+            """, (
+                etudiant_id,
+                filiere_id,
+                niveau_id,
+                "2023-2024",
+                self.combo_groupe.get(),
+                datetime.now().strftime("%Y-%m-%d")
+            ))
+
             conn.commit()
             conn.close()
-            messagebox.showinfo("Succès", f"Étudiant inscrit !\nGroupe : {self.combo_groupe.get()}")
+
+            messagebox.showinfo(
+                "Succès",
+                f"Étudiant inscrit avec succès !\n"
+                f"Filière : {self.combo_filiere.get()}\n"
+                f"Niveau : {self.combo_niveau.get()}\n"
+                f"Groupe : {self.combo_groupe.get()}"
+            )
+
         except Exception as e:
+            conn.rollback()
+            conn.close()
             messagebox.showerror("Erreur", str(e))
+
