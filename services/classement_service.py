@@ -14,13 +14,12 @@ def calculer_classement(filiere=None, niveau=None, groupe=None, annee="2023-2024
             e.nom,
             e.prenom,
             i.groupe,
-            SUM(n.note * n.coefficient) / SUM(n.coefficient) AS moyenne
+            CASE WHEN SUM(n.note * n.coefficient) IS NOT NULL THEN SUM(n.note * n.coefficient) / SUM(n.coefficient) ELSE 0 END AS moyenne
         FROM inscriptions i
         JOIN etudiants e ON e.id = i.etudiant_id
-        JOIN notes n ON n.etudiant_id = e.id
-        JOIN modules m ON m.id = n.module_id
+        LEFT JOIN notes n ON n.etudiant_id = e.id AND n.annee_academique = ?
+        LEFT JOIN modules m ON m.id = n.module_id
         WHERE i.annee_academique = ?
-          AND n.annee_academique = ?
     """
     params = [annee, annee]
 
@@ -64,6 +63,7 @@ def calculer_classement(filiere=None, niveau=None, groupe=None, annee="2023-2024
         })
 
     return classement
+
 
 
 def calculer_mention(moyenne):

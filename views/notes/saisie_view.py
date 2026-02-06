@@ -6,15 +6,12 @@ from datetime import datetime
 class SaisieNotesModule:
     def __init__(self, parent_frame):
         self.frame = parent_frame
-        self.modules_map = {}
-
+        self.modules_map = {}  # label -> id
         self.setup_ui()
         self.charger_modules()
-        self.charger_groupes()
-        self.charger_etudiants()
 
     def setup_ui(self):
-        # Titre
+        # ----- TITRE -----
         tk.Label(
             self.frame,
             text="SAISIE DES NOTES",
@@ -23,7 +20,7 @@ class SaisieNotesModule:
             fg="#2c3e50"
         ).pack(pady=10)
 
-        # --- FILTRES ---
+        # ----- FILTRES -----
         filtres_frame = tk.LabelFrame(self.frame, text="Paramètres de saisie", bg="white")
         filtres_frame.pack(fill="x", padx=20, pady=10)
 
@@ -48,7 +45,7 @@ class SaisieNotesModule:
         self.combo_session.grid(row=0, column=5, padx=5, pady=5)
         self.combo_session.set("Normale")
 
-        # Type d'évaluation
+        # Type évaluation
         tk.Label(filtres_frame, text="Type évaluation :", bg="white").grid(row=0, column=6, padx=5, pady=5)
         self.combo_type_eval = ttk.Combobox(
             filtres_frame,
@@ -65,29 +62,27 @@ class SaisieNotesModule:
         self.combo_type_eval.bind("<<ComboboxSelected>>", lambda e: self.charger_etudiants())
         self.combo_session.bind("<<ComboboxSelected>>", lambda e: self.charger_etudiants())
 
-        # --- TABLEAU DE SAISIE ---
+        # ----- TABLEAU -----
         table_frame = tk.Frame(self.frame, bg="white")
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
         colonnes = ("id", "matricule", "nom", "note")
         self.tree = ttk.Treeview(table_frame, columns=colonnes, show="headings")
-
         self.tree.heading("matricule", text="Matricule")
         self.tree.heading("nom", text="Nom")
         self.tree.heading("note", text="Note /20")
-
         self.tree.column("matricule", width=150)
         self.tree.column("nom", width=250)
         self.tree.column("note", width=100, anchor="center")
 
-        # Tag pour couleurs
-        self.tree.tag_configure("faible", background="#f8d7da")   # Rouge clair
-        self.tree.tag_configure("excellente", background="#d4edda")  # Vert clair
+        # Tags pour couleurs
+        self.tree.tag_configure("faible", background="#f8d7da")
+        self.tree.tag_configure("excellente", background="#d4edda")
 
         self.tree.pack(fill="both", expand=True)
         self.tree.bind("<Double-1>", self.editer_note)
 
-        # --- BOUTON ---
+        # ----- BOUTON ENREGISTRER -----
         tk.Button(
             self.frame,
             text="ENREGISTRER LES NOTES",
@@ -97,65 +92,11 @@ class SaisieNotesModule:
             command=self.enregistrer_notes
         ).pack(pady=15)
 
-    def enregistrer_notes(self):
-        module_label = self.combo_module.get()
-        module_id = self.modules_map.get(module_label)
-        session = self.combo_session.get()
-        type_eval = self.combo_type_eval.get()
-        annee = "2023-2024"
-
-        if not module_id:
-            messagebox.showwarning("Attention", "Module non sélectionné")
-            return
-
-        conn = sqlite3.connect("gestion_etudiants.db")
-        cursor = conn.cursor()
-
-        try:
-            for item in self.tree.get_children():
-                values = self.tree.item(item, "values")
-                etudiant_id = int(values[0])
-                note = values[3]   
-
-                if note == "":
-                    continue
-
-                # INSERT ou UPDATE si déjà existant
-                cursor.execute("""
-                    INSERT INTO notes (
-                        etudiant_id, module_id, type_evaluation,
-                        note, coefficient, date_examen,
-                        session, annee_academique
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(etudiant_id, module_id, type_evaluation, annee_academique, session)
-                    DO UPDATE SET note=excluded.note, date_examen=excluded.date_examen
-                """, (
-                    etudiant_id,
-                    module_id,
-                    type_eval,
-                    float(note),
-                    1.0,
-                    datetime.now().date(),
-                    session,
-                    annee
-                ))
-
-            conn.commit()
-            messagebox.showinfo("Succès", "Notes enregistrées")
-            self.charger_etudiants()  # Recharger pour mise en couleur
-
-        except Exception as e:
-            conn.rollback()
-            messagebox.showerror("Erreur", str(e))
-        finally:
-            conn.close()
-
+    # ------------------ CHARGER MODULES ------------------
     def charger_modules(self):
         try:
             conn = sqlite3.connect("gestion_etudiants.db")
             cursor = conn.cursor()
-
             cursor.execute("SELECT id, code, nom FROM modules")
             modules = cursor.fetchall()
             conn.close()
@@ -169,27 +110,26 @@ class SaisieNotesModule:
             self.combo_module["values"] = valeurs
             if valeurs:
                 self.combo_module.set(valeurs[0])
-
+                self.charger_groupes()
         except Exception as e:
             messagebox.showerror("Erreur", f"Impossible de charger les modules : {e}")
 
+    # ------------------ CHARGER GROUPES ------------------
     def charger_groupes(self):
-        try:
-            module_label = self.combo_module.get()
-            module_id = self.modules_map.get(module_label)
-            if not module_id:
-                self.combo_groupe["values"] = []
-                return
+        module_label = self.combo_module.get()
+        module_id = self.modules_map.get(module_label)
+        if not module_id:
+            self.combo_groupe["values"] = []
+            return
 
+        try:
             conn = sqlite3.connect("gestion_etudiants.db")
             cursor = conn.cursor()
-
             cursor.execute("""
                 SELECT DISTINCT i.groupe
                 FROM inscriptions i
-                JOIN modules m ON i.filiere_id = m.filiere_id AND i.niveau_id = m.niveau_id
-                WHERE m.id = ?
-            """, (module_id,))
+                WHERE i.annee_academique = ?
+            """, ("2023-2024",))
             groupes = [row[0] for row in cursor.fetchall()]
             conn.close()
 
@@ -200,6 +140,7 @@ class SaisieNotesModule:
         except Exception as e:
             messagebox.showerror("Erreur", f"Impossible de charger les groupes : {e}")
 
+    # ------------------ CHARGER ETUDIANTS ------------------
     def charger_etudiants(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
@@ -217,42 +158,35 @@ class SaisieNotesModule:
         try:
             conn = sqlite3.connect("gestion_etudiants.db")
             cursor = conn.cursor()
-
             cursor.execute("""
                 SELECT e.id, e.matricule, e.nom || ' ' || e.prenom,
                     n.note
                 FROM inscriptions i
                 JOIN etudiants e ON e.id = i.etudiant_id
-                JOIN modules m ON m.filiere_id = i.filiere_id AND m.niveau_id = i.niveau_id
-                LEFT JOIN notes n ON n.etudiant_id = e.id AND n.module_id = m.id
-                    AND n.type_evaluation=? AND n.session=? AND n.annee_academique=?
-                WHERE m.id = ? AND i.groupe = ?
-            """, (type_eval, session, annee, module_id, groupe))
+                LEFT JOIN notes n ON n.etudiant_id = e.id
+                    AND n.module_id = ? AND n.type_evaluation=? AND n.session=? AND n.annee_academique=?
+                WHERE i.groupe = ? AND i.annee_academique=?
+            """, (module_id, type_eval, session, annee, groupe, annee))
 
             for etu_id, matricule, nom_complet, note in cursor.fetchall():
-                valeurs = (matricule, nom_complet, note if note is not None else "")
+                note_val = float(note) if note is not None else ""
                 tag = ""
                 if note is not None:
-                    if note < 10:
+                    if note_val < 10:
                         tag = "faible"
-                    elif note >= 18:
+                    elif note_val >= 18:
                         tag = "excellente"
-                self.tree.insert(
-                    "",
-                    "end",
-                    values=(etu_id, matricule, nom_complet, note if note is not None else ""),
-                    tags=(tag,)
-                )
 
+                self.tree.insert("", "end", values=(etu_id, matricule, nom_complet, note_val), tags=(tag,))
             conn.close()
-
         except Exception as e:
             messagebox.showerror("Erreur", f"Impossible de charger les étudiants : {e}")
 
+
+    # ------------------ EDITER NOTE ------------------
     def editer_note(self, event):
         item_id = self.tree.identify_row(event.y)
         col = self.tree.identify_column(event.x)
-
         if col != "#4" or not item_id:
             return
 
@@ -284,3 +218,38 @@ class SaisieNotesModule:
 
         entry.bind("<Return>", valider)
         entry.bind("<FocusOut>", lambda e: entry.destroy())
+
+    # ------------------ ENREGISTRER NOTES ------------------
+    def enregistrer_notes(self):
+        module_label = self.combo_module.get()
+        module_id = self.modules_map.get(module_label)
+        session = self.combo_session.get()
+        type_eval = self.combo_type_eval.get()
+        annee = "2023-2024"
+
+        if not module_id:
+            messagebox.showwarning("Attention", "Module non sélectionné")
+            return
+
+        try:
+            conn = sqlite3.connect("gestion_etudiants.db")
+            cursor = conn.cursor()
+
+            for item in self.tree.get_children():
+                etu_id, _, _, note = self.tree.item(item, "values")
+                if note == "":
+                    continue
+
+                cursor.execute("""
+                    INSERT INTO notes (etudiant_id, module_id, type_evaluation, note, coefficient, date_examen, session, annee_academique)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(etudiant_id, module_id, type_evaluation, annee_academique, session)
+                    DO UPDATE SET note=excluded.note, date_examen=excluded.date_examen
+                """, (etu_id, module_id, type_eval, float(note), 1.0, datetime.now().date(), session, annee))
+
+            conn.commit()
+            conn.close()
+            messagebox.showinfo("Succès", "Notes enregistrées")
+            self.charger_etudiants()
+        except Exception as e:
+            messagebox.showerror("Erreur", str(e))
