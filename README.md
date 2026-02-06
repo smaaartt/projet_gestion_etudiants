@@ -54,7 +54,7 @@ Architecture du Projet
 
 main.py : Point d'entrée de l'application avec gestion de l'authentification.
 
-Auteure :
+Auteures :
 KAVUANSIKO Angelikia
 CHRIQUI Leora
 MISTRY Ekta
