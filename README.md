@@ -56,5 +56,5 @@ main.py : Point d'entrée de l'application avec gestion de l'authentification.
 
 Auteure :
 KAVUANSIKO Angelikia
-CHLIQUI Leora
+CHRIQUI Leora
 MISTRY Ekta
