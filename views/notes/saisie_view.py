@@ -69,7 +69,7 @@ class SaisieNotesModule:
         table_frame = tk.Frame(self.frame, bg="white")
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-        colonnes = ("matricule", "nom", "note")
+        colonnes = ("id", "matricule", "nom", "note")
         self.tree = ttk.Treeview(table_frame, columns=colonnes, show="headings")
 
         self.tree.heading("matricule", text="Matricule")
@@ -113,8 +113,9 @@ class SaisieNotesModule:
 
         try:
             for item in self.tree.get_children():
-                etudiant_id = int(item)
-                note = self.tree.item(item, "values")[2]
+                values = self.tree.item(item, "values")
+                etudiant_id = int(values[0])
+                note = values[3]   
 
                 if note == "":
                     continue
@@ -236,7 +237,12 @@ class SaisieNotesModule:
                         tag = "faible"
                     elif note >= 18:
                         tag = "excellente"
-                self.tree.insert("", "end", values=valeurs, iid=etu_id, tags=(tag,))
+                self.tree.insert(
+                    "",
+                    "end",
+                    values=(etu_id, matricule, nom_complet, note if note is not None else ""),
+                    tags=(tag,)
+                )
 
             conn.close()
 
@@ -247,11 +253,11 @@ class SaisieNotesModule:
         item_id = self.tree.identify_row(event.y)
         col = self.tree.identify_column(event.x)
 
-        if col != "#3" or not item_id:
+        if col != "#4" or not item_id:
             return
 
         x, y, width, height = self.tree.bbox(item_id, col)
-        valeur_actuelle = self.tree.item(item_id, "values")[2]
+        valeur_actuelle = self.tree.item(item_id, "values")[3]
 
         entry = tk.Entry(self.tree)
         entry.place(x=x, y=y, width=width, height=height)
@@ -264,7 +270,7 @@ class SaisieNotesModule:
                 if not 0 <= note <= 20:
                     raise ValueError
                 valeurs = list(self.tree.item(item_id, "values"))
-                valeurs[2] = note
+                valeurs[3] = note
                 tag = ""
                 if note < 10:
                     tag = "faible"
