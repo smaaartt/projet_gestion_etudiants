@@ -11,6 +11,7 @@ from services.etudiant_service import obtenir_premier_etudiant
 # --- IMPORTS NOTES & RESULTATS ---
 from views.notes.saisie_view import SaisieNotesModule
 from views.notes.classement_view import ClassementView
+from views.notes.statistiques_module import StatistiquesDashboard
 from services.releve_service import generer_releve_pdf
 
 # --- IMPORTS ABSENCES ---
@@ -62,6 +63,7 @@ class MainWindow:
         tk.Button(self.sidebar, text="Pointer Absences", command=self.ouvrir_enregistrement_absences).pack(fill="x", pady=2, padx=10)
         tk.Button(self.sidebar, text="Saisie des Notes", command=self.ouvrir_saisie_notes).pack(fill="x", pady=2, padx=10)
         tk.Button(self.sidebar, text="Générer Relevé PDF", command=self.ouvrir_releve).pack(fill="x", pady=2, padx=10)
+        tk.Button(self.sidebar, text="Statistiques", command=self.ouvrir_statistiques).pack(fill="x", pady=2, padx=10)
 
         # --- SECTION : GESTION (SECRÉTARIAT & ADMIN) ---
         if self.role in ['Administrateur', 'Secrétariat']:
@@ -157,3 +159,7 @@ class MainWindow:
     def ouvrir_stats_absences(self):
         self.nettoyer_cadre()
         StatsAbsencesView(self.content_area)
+
+    def ouvrir_statistiques(self):
+        self.nettoyer_cadre()
+        StatistiquesDashboard(self.content_area)
