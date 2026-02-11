@@ -58,15 +58,19 @@ class ClassementView:
         conn = sqlite3.connect("gestion_etudiants.db")
         cursor = conn.cursor()
 
-        # Filières
+        # Filières - stocker l'ID avec le nom
         cursor.execute("SELECT id, nom FROM filieres")
-        filieres = ["Tous"] + [row[1] for row in cursor.fetchall()]
+        filieres_data = cursor.fetchall()
+        self.filieres_dict = {row[1]: row[0] for row in filieres_data}  # {nom: id}
+        filieres = ["Tous"] + [row[1] for row in filieres_data]
         self.combo_filiere['values'] = filieres
         self.combo_filiere.set("Tous")
 
-        # Niveaux
+        # Niveaux - stocker l'ID avec le nom
         cursor.execute("SELECT id, nom FROM niveaux")
-        niveaux = ["Tous"] + [row[1] for row in cursor.fetchall()]
+        niveaux_data = cursor.fetchall()
+        self.niveaux_dict = {row[1]: row[0] for row in niveaux_data}  # {nom: id}
+        niveaux = ["Tous"] + [row[1] for row in niveaux_data]
         self.combo_niveau['values'] = niveaux
         self.combo_niveau.set("Tous")
 
@@ -83,28 +87,18 @@ class ClassementView:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        conn = sqlite3.connect("gestion_etudiants.db")
-        cursor = conn.cursor()
-
-        # Récupérer IDs filière et niveau
-        if self.filiere_var.get() == "Tous":
+        # Récupérer les IDs depuis les dictionnaires
+        filiere_nom = self.filiere_var.get()
+        if filiere_nom == "Tous":
             filiere_id = None
         else:
-            filiere_code = self.combo_filiere.get().split(" - ")[0]
-            cursor.execute("SELECT id FROM filieres WHERE code=?", (filiere_code,))
-            res = cursor.fetchone()
-            filiere_id = res[0] if res else None
+            filiere_id = self.filieres_dict.get(filiere_nom)
 
-        # Niveau
-        if self.niveau_var.get() == "Tous":
+        niveau_nom = self.niveau_var.get()
+        if niveau_nom == "Tous":
             niveau_id = None
         else:
-            niveau_code = self.combo_niveau.get().split(" - ")[0]
-            cursor.execute("SELECT id FROM niveaux WHERE code=?", (niveau_code,))
-            res = cursor.fetchone()
-            niveau_id = res[0] if res else None
-
-        conn.close()
+            niveau_id = self.niveaux_dict.get(niveau_nom)
 
         # Calculer le classement
         classement = calculer_classement(
